@@ -1,7 +1,11 @@
 import { createApp } from './bridge.js';
 import * as appMod from './src/main.js';
 
-const FRONTEND = "C:\\Users\\usuario\\Documents\\dev\\mindustry-launcher/src/frontend";
+let FRONTEND;
+try {
+  FRONTEND = decodeURIComponent(new URL('./frontend', import.meta.url).pathname);
+  if (/^\/[A-Za-z]:\//.test(FRONTEND)) FRONTEND = FRONTEND.slice(1); // windows /C:/…
+} catch { FRONTEND = tjs.exePath.replace(/[\\/][^\\/]*$/, '') + '/frontend'; }
 const RESOURCES = null;
 const EXECUTABLES = null;
 
@@ -59,53 +63,6 @@ const app = await createApp({
   rememberWindows: false,
 });
 if (appMod.init) appMod.init(app);
-
-let reloadTimer = null;
-async function watchTree(dir, cb, skip = () => false, perDir = false) {
-  const watchers = new Map();
-  const add = async (rel) => {
-    if (watchers.has(rel)) return;
-    const path = rel ? dir + '/' + rel : dir;
-    try {
-      watchers.set(rel, tjs.watch(path, (file) => {
-        if (!file) return;
-        const r = (rel ? rel + '/' : '') + String(file).replace(/\\/g, '/');
-        if (skip(r)) return;
-        if (perDir) sync(r);
-        cb(r);
-      }));
-    } catch { return; }
-    if (!perDir) return;
-    try {
-      for await (const e of await tjs.readDir(path)) {
-        const r = (rel ? rel + '/' : '') + e.name;
-        if (e.isDirectory && !skip(r)) await add(r);
-      }
-    } catch {}
-  };
-  // A name that changed may be a folder made (watch it and what's inside) or
-  // removed (drop its watches, so one made again later is watched afresh).
-  const sync = async (r) => {
-    let isDir = false;
-    try { isDir = (await tjs.stat(dir + '/' + r)).isDirectory; } catch {}
-    if (isDir) return add(r);
-    for (const [k, w] of watchers) {
-      if (k === r || k.startsWith(r + '/')) { try { w.close(); } catch {} watchers.delete(k); }
-    }
-  };
-  await add('');
-}
-await watchTree(FRONTEND, () => {
-  clearTimeout(reloadTimer);
-  reloadTimer = setTimeout(async () => {
-    try {
-      await app.reload();
-      console.log('tinyjs: frontend reloaded');
-    } catch (e) {
-      console.log('tinyjs: frontend reload failed:', String(e));
-    }
-  }, 150);
-}, undefined, false);
 
 const launcherSt = await app.done;
 if (launcherSt?.term_signal || launcherSt?.exit_status) {
