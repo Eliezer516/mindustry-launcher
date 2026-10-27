@@ -1,0 +1,9 @@
+{
+  "$schema": "https://tinyjs.app/schema/tinyjs.schema.json",
+  "name": "mindustry-launcher",
+  "title": "mindustry-launcher",
+  "size": "960x640",
+  "id": "com.example.mindustry-launcher",
+  "version": "0.1.0",
+  "minTinyjsVersion": "0.66.2"
+}
